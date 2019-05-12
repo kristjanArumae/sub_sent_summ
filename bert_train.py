@@ -15,16 +15,19 @@ import os
 
 
 class CustomNetwork(BertPreTrainedModel):
-    def __init__(self, config, num_labels=2):
+    def __init__(self, config, num_labels=2, use_positional=True, dropout=0.1):
         super(CustomNetwork, self).__init__(config)
 
         self.num_labels = num_labels
-        config.type_vocab_size = config.max_position_embeddings
+
+        if use_positional:
+            config.type_vocab_size = config.max_position_embeddings
+
         self.bert = BertModel(config)
         self.apply(self.init_bert_weights)
 
-        self.dropout_qa = nn.Dropout(0.1)
-        self.dropout_s = nn.Dropout(0.1)
+        self.dropout_qa = nn.Dropout(dropout)
+        self.dropout_s = nn.Dropout(dropout)
         self.classifier = nn.Linear(config.hidden_size, num_labels)
         self.qa_outputs = nn.Linear(config.hidden_size, 2)
 
@@ -148,51 +151,37 @@ def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, 
                                 torch.tensor(all_start_positions, dtype=torch.long),
                                 torch.tensor(all_end_positions, dtype=torch.long),
                                 torch.tensor(all_sent_labels, dtype=torch.long),
-                                torch.tensor(all_segment_ids, dtype=torch.long),
-                                torch.tensor(batch_id_list, dtype=torch.long))
+                                torch.tensor(all_segment_ids, dtype=torch.long))
 
     if data_split == 'train':
         sampler = RandomSampler(tensor_data)
-        used_b_id = None
     else:
         sampler = None
 
-        used_b_id = dict()
-        rouge_counter = 0
-
-        rouge_model_path = 'data.nosync/' + ofp_fname + '_rouge/'
-
-        if not os.path.exists(rouge_model_path):
-            os.mkdir(rouge_model_path)
-
-        for batch_id in batch_id_list:
-
-            if batch_id not in used_b_id:
-                y_text = rouge_dict[str(batch_id)]
-
-                ofp_rouge = open(rouge_model_path + 'm_' + str(rouge_counter).zfill(6) + '.txt', 'w+')
-                ofp_rouge.write(y_text)
-                ofp_rouge.close()
-
-                used_b_id[batch_id] = rouge_counter
-                rouge_counter += 1
-
     data_loader = DataLoader(tensor_data, sampler=sampler, batch_size=batch_size)
 
-    return data_loader, num_t, used_b_id, x_for_rouge, all_sent_align
+    return data_loader, num_t, batch_id_list, x_for_rouge, all_sent_align
 
 
-def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=None, x_for_rouge=None, x_sent_align=None, optim='adam', learning_rate=3e-5, unchanged_limit=20, weights=None, ofp_fname='PLT'):
+def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=None, x_for_rouge=None, x_sent_align=None, optim='adam', learning_rate=3e-5, unchanged_limit=20, weights=None, ofp_fname='PLT', batch_ids=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    rouge_sys_sent_path = 'data.nosync/train/small_sys_sent_bert_large/'
-    rouge_sys_segs_path = 'data.nosync/train/small_sys_segs_bert_large/'
+    rouge_sys_sent_path = 'data.nosync/rouge_sent/' + ofp_fname + '/'
+    rouge_sys_segs_path = 'data.nosync/rouge_segs/' + ofp_fname + '/'
+
+    output_model_file = 'saved_models/' + ofp_fname
+    output_config_file = 'saved_configs/' + ofp_fname
 
     if not os.path.exists(rouge_sys_sent_path):
         os.mkdir(rouge_sys_sent_path)
     if not os.path.exists(rouge_sys_segs_path):
         os.mkdir(rouge_sys_segs_path)
+
+    if not os.path.exists('saved_models'):
+        os.mkdir('saved_models')
+    if not os.path.exists('saved_configs'):
+        os.mkdir('saved_configs')
 
     if optim == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, weight_decay=0.01)
@@ -219,7 +208,7 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
             optimizer.zero_grad()
 
             batch = tuple(t.to(device) for t in batch)
-            input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids, _ = batch
+            input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids = batch
 
             loss, loss_s, loss_q = model(input_ids, seg_ids, input_mask, sent_labels, start_positions, end_position, weights, train=True)
 
@@ -230,7 +219,7 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
             acc_loss_s.append(loss_s.cpu().data.numpy())
             acc_loss_qa.append(loss_q.cpu().data.numpy())
 
-            if (step + 1) % 1000 == 0:
+            if (step + 1) % 10000 == 0:
                 loss_ls.append(np.mean(acc_loss))
                 loss_ls_s.append(np.mean(acc_loss_s))
                 loss_ls_qa.append(np.mean(acc_loss_qa))
@@ -243,11 +232,10 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
 
                     valid_ls = []
 
-                    batch_ids = []
                     for _, batch_valid in enumerate(tqdm(loader_valid, desc="Validation")):
                         batch_valid = tuple(t2.to(device) for t2 in batch_valid)
 
-                        input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids, batch_id = batch_valid
+                        input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids = batch_valid
                         start_l, end_l, sent_l, valid_l = model(input_ids, seg_ids, input_mask, sent_labels, start_positions, end_position, None)
                         # sent_l = model(input_ids, seg_ids, input_mask, None, None, None)
 
@@ -259,7 +247,6 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
                         eval_sys_end.extend(end_l.cpu().data.numpy())
                         eval_sys_sent.extend(sent_l.cpu().data.numpy())
 
-                        batch_ids.extend(batch_id.cpu().data.numpy().tolist())
                         valid_ls.append(valid_l.cpu().data.numpy())
 
                     qa_acc_val, qa_f1_val, sent_acc_val, sent_f1_val = get_valid_evaluation(eval_gt_start,
@@ -295,6 +282,12 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
                                                                                                  rouge_sys_segs_path,
                                                                                                  ofp_fname)
 
+                        model_to_save = model.module if hasattr(model, 'module') else model
+                        torch.save(model_to_save.state_dict(), output_model_file)
+
+                        with open(output_config_file, 'w') as f:
+                            f.write(model_to_save.config.to_json_string())
+
                     elif unchanged > unchanged_limit:
                         create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len)
                         return
@@ -313,22 +306,23 @@ if args.train:
 
     ofp_fname = create_output_name(args)
 
-    data_loader_train, num_train, _, _, _ = create_iterator(data_split='train',
-                                                            max_len=sent_len,
-                                                            max_size=1000,
-                                                            batch_size=batch_size,
-                                                            balance=args.balance,
-                                                            bert_model=args.bert_model,
-                                                            ofp_fname=ofp_fname)
     data_loader_valid, num_val, used_b_id, x_for_rouge, all_sent_align = create_iterator(data_split='valid',
                                                                                          max_len=sent_len,
-                                                                                         max_size=128,
+                                                                                         max_size=-1,
                                                                                          batch_size=batch_size,
                                                                                          balance=None,
                                                                                          bert_model=args.bert_model,
                                                                                          ofp_fname=ofp_fname)
 
-    model = CustomNetwork.from_pretrained(args.bert_model)
+    data_loader_train, num_train, _, _, _ = create_iterator(data_split='train',
+                                                            max_len=sent_len,
+                                                            max_size=-1,
+                                                            batch_size=batch_size,
+                                                            balance=args.balance,
+                                                            bert_model=args.bert_model,
+                                                            ofp_fname=ofp_fname)
+
+    model = CustomNetwork.from_pretrained(args.bert_model, use_positional=args.use_positional, dropout=args.dropout)
 
     train(model=model,
           loader_train=data_loader_train,
@@ -341,7 +335,8 @@ if args.train:
           learning_rate=args.lr,
           unchanged_limit=args.unchanged_limit,
           weights=args.weights,
-          ofp_fname=ofp_fname)
+          ofp_fname=ofp_fname,
+          batch_ids=used_b_id)
 else:
     raise NotImplementedError
 
