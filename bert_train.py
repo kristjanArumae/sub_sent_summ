@@ -314,7 +314,7 @@ if args.train:
                                                                                          batch_size=batch_size,
                                                                                          balance=None,
                                                                                          bert_model=args.bert_model,
-                                                                                         ofp_fname=ofp_fname)
+                                                                                         use_posit=args.use_positional)
 
     data_loader_train, num_train, _, _, _ = create_iterator(data_split='train',
                                                             max_len=sent_len,
@@ -322,7 +322,7 @@ if args.train:
                                                             batch_size=batch_size,
                                                             balance=args.balance,
                                                             bert_model=args.bert_model,
-                                                            ofp_fname=ofp_fname)
+                                                            use_posit=args.use_positional)
 
     model = CustomNetwork.from_pretrained(args.bert_model, use_positional=args.use_positional, dropout=args.dropout)
 
