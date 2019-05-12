@@ -86,7 +86,7 @@ class CustomNetwork(BertPreTrainedModel):
             return torch.nn.functional.softmax(start_logits, dim=-1), torch.nn.functional.softmax(end_logits, dim=-1), torch.nn.functional.softmax(logits, dim=-1), total_loss
 
 
-def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, balance=None, bert_model='bert-large-uncased', ofp_fname=''):
+def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, balance=None, bert_model='bert-large-uncased', use_posit=True):
     bal_str = ''
 
     if balance is not None and data_split == 'train':  # do not balance test or valid
@@ -134,8 +134,10 @@ def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, 
 
         all_input_ids.append(x[:max_len])
         all_input_mask.append(mask[:max_len])
-
-        segment_id = [s_id] * max_len
+        if use_posit:
+            segment_id = [s_id] * max_len
+        else:
+            segment_id = [0] * max_len
 
         all_segment_ids.append(segment_id[:max_len])
         batch_id_list.append(b_id)
