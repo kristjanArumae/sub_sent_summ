@@ -79,6 +79,7 @@ def create_valid_rouge(rouge_dict, x_for_rouge, eval_sys_sent, eval_sys_start, e
     assert len(set(len(x) for x in (
     x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls))) == 1
 
+    print(len(eval_sys_start))
     ofp_rouge_sent = None
     ofp_rouge_segm = None
 
