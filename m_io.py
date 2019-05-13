@@ -94,6 +94,7 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
     uesd_seg_len = []
 
     ofp_readable = open('data.nosync/' + ofp_fname + '.html', 'w+')
+    rouge_counter = 0
 
     for x_o, sys_lbl_s, sys_lbl_start, sys_lbl_end, model_lbl_s, model_lbl_start, model_lbl_end, b_id, x_a in zip(
             x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls):
@@ -129,16 +130,18 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
 
             ofp_readable.write('<p>')
 
-            ofp_rouge_sent = open(rouge_sys_sent_path + 's_' + str(cur_batch).zfill(6) + '.txt', 'w+')
-            ofp_rouge_segm = open(rouge_sys_segs_path + 's_' + str(cur_batch).zfill(6) + '.txt', 'w+')
+            ofp_rouge_sent = open(rouge_sys_sent_path + 's_' + str(rouge_counter).zfill(6) + '.txt', 'w+')
+            ofp_rouge_segm = open(rouge_sys_segs_path + 's_' + str(rouge_counter).zfill(6) + '.txt', 'w+')
 
             cur_used_ls.append(cur_used)
             cur_used = 0
 
+            rouge_counter += 1
+
             if sys_lbl_s[1] > sys_lbl_s[0]:
                 segment = x_o.split()[start_idx_aligned:end_idx_aligned + 1]
 
-                ofp_rouge_sent.write(x_o)
+                ofp_rouge_sent.write(x_o.replace('[CLS]', '').replace('[SEP]', ''))
                 ofp_rouge_segm.write(' '.join(segment))
 
                 ofp_rouge_sent.write(' ')
@@ -196,7 +199,7 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
         elif sys_lbl_s[1] > sys_lbl_s[0]:
             segment = x_o.split()[start_idx_aligned:end_idx_aligned + 1]
 
-            ofp_rouge_sent.write(x_o)
+            ofp_rouge_sent.write(x_o.replace('[CLS]', '').replace('[SEP]', ''))
             ofp_rouge_segm.write(' '.join(segment))
 
             ofp_rouge_sent.write(' ')
