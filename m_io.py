@@ -76,6 +76,8 @@ def get_valid_evaluation(eval_gt_start,
 
 def create_valid_rouge(rouge_dict, x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end,
                        batch_ids, align_ls, rouge_sys_sent_path, rouge_sys_segs_path, ofp_fname):
+    assert len(set(len(x) for x in (
+    x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls))) == 1
 
     ofp_rouge_sent = None
     ofp_rouge_segm = None
@@ -95,7 +97,9 @@ def create_valid_rouge(rouge_dict, x_for_rouge, eval_sys_sent, eval_sys_start, e
 
     for x_o, sys_lbl_s, sys_lbl_start, sys_lbl_end, model_lbl_s, model_lbl_start, model_lbl_end, b_id, x_a in zip(
             x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls):
+
         total_s += 1
+
         assert b_id not in used_set
 
         start_idx = min(np.argmax(sys_lbl_start), x_a[-1])

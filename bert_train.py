@@ -240,7 +240,6 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
 
                         input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids = batch_valid
                         start_l, end_l, sent_l, valid_l = model(input_ids, seg_ids, input_mask, sent_labels, start_positions, end_position, None)
-                        # sent_l = model(input_ids, seg_ids, input_mask, None, None, None)
 
                         eval_gt_start.extend(start_positions.cpu().data.numpy())
                         eval_gt_end.extend(end_position.cpu().data.numpy())
@@ -322,7 +321,7 @@ if args.train:
 
     data_loader_train, num_train, _, _, _ = create_iterator(data_split='train',
                                                             max_len=sent_len,
-                                                            max_size=-1,
+                                                            max_size=10000,
                                                             batch_size=batch_size,
                                                             balance=args.balance,
                                                             bert_model=args.bert_model,
