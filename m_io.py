@@ -74,12 +74,11 @@ def get_valid_evaluation(eval_gt_start,
     return (start_acc + end_acc) / 2.0, (start_f1 + end_f1) / 2.0, acc_sent, sent_f1
 
 
-def create_valid_rouge(rouge_dict, x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end,
+def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end,
                        batch_ids, align_ls, rouge_sys_sent_path, rouge_sys_segs_path, ofp_fname):
     assert len(set(len(x) for x in (
     x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls))) == 1
 
-    print(len(eval_sys_start))
     ofp_rouge_sent = None
     ofp_rouge_segm = None
 
@@ -130,8 +129,8 @@ def create_valid_rouge(rouge_dict, x_for_rouge, eval_sys_sent, eval_sys_start, e
 
             ofp_readable.write('<p>')
 
-            ofp_rouge_sent = open(rouge_sys_sent_path + 's_' + str(rouge_dict[cur_batch]).zfill(6) + '.txt', 'w+')
-            ofp_rouge_segm = open(rouge_sys_segs_path + 's_' + str(rouge_dict[cur_batch]).zfill(6) + '.txt', 'w+')
+            ofp_rouge_sent = open(rouge_sys_sent_path + 's_' + str(cur_batch).zfill(6) + '.txt', 'w+')
+            ofp_rouge_segm = open(rouge_sys_segs_path + 's_' + str(cur_batch).zfill(6) + '.txt', 'w+')
 
             cur_used_ls.append(cur_used)
             cur_used = 0

@@ -134,6 +134,7 @@ def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, 
 
         all_input_ids.append(x[:max_len])
         all_input_mask.append(mask[:max_len])
+
         if use_posit:
             segment_id = [s_id] * max_len
         else:
@@ -165,7 +166,7 @@ def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, 
     return data_loader, num_t, batch_id_list, x_for_rouge, all_sent_align
 
 
-def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=None, x_for_rouge=None, x_sent_align=None, optim='adam', learning_rate=3e-5, unchanged_limit=20, weights=None, ofp_fname='PLT', batch_ids=None):
+def train(model, loader_train, loader_valid, num_train_epochs=70, x_for_rouge=None, x_sent_align=None, optim='adam', learning_rate=3e-5, unchanged_limit=20, weights=None, ofp_fname='PLT', batch_ids=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -273,8 +274,7 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
                         best_qa_f1 = qa_f1_val
                         best_sent_f1 = sent_f1_val
 
-                        cur_used_ls_mean, total_used, total_s, mean_seg_len = create_valid_rouge(rouge_dict,
-                                                                                                 x_for_rouge,
+                        cur_used_ls_mean, total_used, total_s, mean_seg_len = create_valid_rouge(x_for_rouge,
                                                                                                  eval_sys_sent,
                                                                                                  eval_sys_start,
                                                                                                  eval_sys_end,
@@ -311,7 +311,7 @@ if args.train:
 
     ofp_fname = create_output_name(args)
 
-    data_loader_valid, num_val, used_b_id, x_for_rouge, all_sent_align = create_iterator(data_split='valid',
+    data_loader_valid, num_val, b_ls, x_for_rouge, all_sent_align = create_iterator(data_split='valid',
                                                                                          max_len=sent_len,
                                                                                          max_size=-1,
                                                                                          batch_size=batch_size,
@@ -333,7 +333,6 @@ if args.train:
           loader_train=data_loader_train,
           loader_valid=data_loader_valid,
           num_train_epochs=args.epochs,
-          rouge_dict=used_b_id,
           x_for_rouge=x_for_rouge,
           x_sent_align=all_sent_align,
           optim=args.optim,
@@ -341,7 +340,7 @@ if args.train:
           unchanged_limit=args.unchanged_limit,
           weights=args.weights,
           ofp_fname=ofp_fname,
-          batch_ids=used_b_id)
+          batch_ids=b_ls)
 else:
     raise NotImplementedError
 
