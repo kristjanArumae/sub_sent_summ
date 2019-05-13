@@ -313,7 +313,7 @@ if args.train:
 
     data_loader_valid, num_val, b_ls, x_for_rouge, all_sent_align = create_iterator(data_split='valid',
                                                                                          max_len=sent_len,
-                                                                                         max_size=1000,
+                                                                                         max_size=-1,
                                                                                          batch_size=batch_size,
                                                                                          balance=None,
                                                                                          bert_model=args.bert_model,
@@ -321,7 +321,7 @@ if args.train:
 
     data_loader_train, num_train, _, _, _ = create_iterator(data_split='train',
                                                             max_len=sent_len,
-                                                            max_size=10000,
+                                                            max_size=-1,
                                                             batch_size=batch_size,
                                                             balance=args.balance,
                                                             bert_model=args.bert_model,
