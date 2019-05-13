@@ -196,6 +196,7 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
     qa_acc, qa_f1, sent_acc, sent_f1 = [], [], [], []
 
     acc_loss, acc_loss_s, acc_loss_qa = [], [], []
+    best_qa_f1, best_sent_f1 = None, None
 
     best_valid = 1e3
     unchanged = 0
@@ -270,6 +271,9 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
                         best_valid = avg_val_loss
                         unchanged = 0
 
+                        best_qa_f1 = qa_f1_val
+                        best_sent_f1 = sent_f1_val
+
                         cur_used_ls_mean, total_used, total_s, mean_seg_len = create_valid_rouge(rouge_dict,
                                                                                                  x_for_rouge,
                                                                                                  eval_sys_sent,
@@ -291,12 +295,12 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, rouge_dict=Non
                             f.write(model_to_save.config.to_json_string())
 
                     elif unchanged > unchanged_limit:
-                        create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len)
+                        create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1)
                         return
                     else:
                         unchanged += 1
 
-    create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len)
+    create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1)
 
 
 args = parse.get_args()

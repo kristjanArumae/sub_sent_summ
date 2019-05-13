@@ -4,7 +4,7 @@ from sklearn.metrics import f1_score, accuracy_score
 import numpy as np
 
 
-def create_metric_figure(fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len):
+def create_metric_figure(fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1):
     plt.plot([i for i in range(len(loss_ls))], loss_ls, '-', label="loss", linewidth=1)
     plt.plot([i for i in range(len(loss_ls))], loss_ls_s, '-', label="sent", linewidth=1)
     plt.plot([i for i in range(len(loss_ls))], loss_ls_qa, '-', label="qa", linewidth=1)
@@ -21,9 +21,20 @@ def create_metric_figure(fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, q
     plt.legend(loc='best')
     plt.savefig(fname + '_val.png', dpi=400)
 
-    print('\n\n\nSent used:', total_used, '/', total_s, total_used / float(total_s))
-    print('Avg len (sent)', cur_used_ls_mean)
-    print('avg seg len', mean_seg_len)
+    ofp_metrics = open(fname + '_metrics.out', 'w+')
+
+    ofp_metrics.write('Sent used: ' + str(total_used) + '/' + str(total_s) + ' = ' + str(total_used / float(total_s)))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Avg len (sent) ' + str(cur_used_ls_mean))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Avg seg len ' + str(mean_seg_len))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Best sent f1 ' + str(best_sent_f1))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Best qa f1 ' + str(best_qa_f1))
+    ofp_metrics.write('\n')
+
+    ofp_metrics.close()
 
 
 def get_valid_evaluation(eval_gt_start,
