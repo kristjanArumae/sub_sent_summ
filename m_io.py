@@ -76,8 +76,8 @@ def get_valid_evaluation(eval_gt_start,
 
 def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end,
                        batch_ids, align_ls, rouge_sys_sent_path, rouge_sys_segs_path, ofp_fname):
-    assert len(set(len(x) for x in (
-    x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls))) == 1
+    # assert len(set(len(x) for x in (
+    # x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls))) == 1
 
     ofp_rouge_sent = None
     ofp_rouge_segm = None
