@@ -13,7 +13,8 @@ import numpy as np
 import os
 
 
-def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, balance=None, bert_model='bert-large-uncased', use_posit=True):
+def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, balance=None,
+                    bert_model='bert-large-uncased', use_posit=True):
     bal_str = ''
 
     if balance is not None and data_split == 'train':  # do not balance test or valid
@@ -25,8 +26,9 @@ def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, 
 
     ifp.close()
 
-    x_ls, y_ls, s_idx_ls, b_id_ls, rouge_dict, x_for_rouge, x_align = data['x'], data['y'], data['s_id'], data['b_id'], data[
-        'rouge'], data['x_orig'], data['x_align']
+    x_ls, y_ls, s_idx_ls, b_id_ls, rouge_dict, x_for_rouge, x_align = data['x'], data['y'], data['s_id'], data['b_id'], \
+                                                                      data[
+                                                                          'rouge'], data['x_orig'], data['x_align']
 
     all_input_ids = []
     all_input_mask = []
@@ -93,7 +95,8 @@ def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, 
     return data_loader, num_t, batch_id_list, x_for_rouge, all_sent_align
 
 
-def train(model, loader_train, loader_valid, num_train_epochs=70, x_for_rouge=None, x_sent_align=None, optim='adam', learning_rate=3e-5, unchanged_limit=20, weights=None, ofp_fname='PLT', batch_ids=None):
+def train(model, loader_train, loader_valid, num_train_epochs=70, x_for_rouge=None, x_sent_align=None, optim='adam',
+          learning_rate=3e-5, unchanged_limit=20, weights=None, ofp_fname='PLT', batch_ids=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -141,7 +144,8 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, x_for_rouge=No
             batch = tuple(t.to(device) for t in batch)
             input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids = batch
 
-            loss, loss_s, loss_q = model(input_ids, seg_ids, input_mask, sent_labels, start_positions, end_position, weights, train=True)
+            loss, loss_s, loss_q = model(input_ids, seg_ids, input_mask, sent_labels, start_positions, end_position,
+                                         weights, train=True)
 
             loss.backward()
             optimizer.step()
@@ -167,7 +171,8 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, x_for_rouge=No
                         batch_valid = tuple(t2.to(device) for t2 in batch_valid)
 
                         input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids = batch_valid
-                        start_l, end_l, sent_l, valid_l = model(input_ids, seg_ids, input_mask, sent_labels, start_positions, end_position, None)
+                        start_l, end_l, sent_l, valid_l = model(input_ids, seg_ids, input_mask, sent_labels,
+                                                                start_positions, end_position, None)
 
                         eval_gt_start.extend(start_positions.cpu().data.numpy())
                         eval_gt_end.extend(end_position.cpu().data.numpy())
@@ -214,19 +219,18 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, x_for_rouge=No
                                                                                                  rouge_sys_segs_path,
                                                                                                  ofp_fname)
 
-                        model_to_save = model.module if hasattr(model, 'module') else model
-                        torch.save(model_to_save.state_dict(), output_model_file)
-
-                        with open(output_config_file, 'w') as f:
-                            f.write(model_to_save.config.to_json_string())
+                        torch.save(model, output_model_file)
 
                     elif unchanged > unchanged_limit:
-                        create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1)
+                        create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1,
+                                             cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1,
+                                             best_sent_f1)
                         return
                     else:
                         unchanged += 1
 
-    create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1)
+    create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean,
+                         total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1)
 
 
 def evaluate(model, data_loader, x_for_rouge=None, x_sent_align=None, ofp_fname='PLT', batch_ids=None):
@@ -282,7 +286,6 @@ def evaluate(model, data_loader, x_for_rouge=None, x_sent_align=None, ofp_fname=
     create_metric_eval(ofp_fname, cur_used_ls_mean, total_used, total_s, mean_seg_len, qa_f1_val, sent_f1_val)
 
 
-
 args = parse.get_args()
 
 batch_size = args.batch_size
@@ -292,12 +295,12 @@ ofp_fname = create_output_name(args)
 if args.train:
 
     data_loader_valid, num_val, b_ls, x_for_rouge, all_sent_align = create_iterator(data_split='valid',
-                                                                                         max_len=sent_len,
-                                                                                         max_size=-1,
-                                                                                         batch_size=batch_size,
-                                                                                         balance=None,
-                                                                                         bert_model=args.bert_model,
-                                                                                         use_posit=args.use_positional)
+                                                                                    max_len=sent_len,
+                                                                                    max_size=-1,
+                                                                                    batch_size=batch_size,
+                                                                                    balance=None,
+                                                                                    bert_model=args.bert_model,
+                                                                                    use_posit=args.use_positional)
 
     data_loader_train, num_train, _, _, _ = create_iterator(data_split='train',
                                                             max_len=sent_len,
@@ -324,15 +327,15 @@ if args.train:
 else:
     output_model_file = 'saved_models/' + ofp_fname
 
-    model = CustomNetwork.from_pretrained(args.bert_model, use_positional=args.use_positional, dropout=args.dropout)
+    model = torch.load(output_model_file)
 
     data_loader, num_val, b_ls, x_for_rouge, all_sent_align = create_iterator(data_split='test',
-                                                                                    max_len=sent_len,
-                                                                                    max_size=-1,
-                                                                                    batch_size=batch_size,
-                                                                                    balance=None,
-                                                                                    bert_model=args.bert_model,
-                                                                                    use_posit=args.use_positional)
+                                                                              max_len=sent_len,
+                                                                              max_size=-1,
+                                                                              batch_size=batch_size,
+                                                                              balance=None,
+                                                                              bert_model=args.bert_model,
+                                                                              use_posit=args.use_positional)
 
     model.load_state_dict(torch.load(output_model_file))
     model.eval()
@@ -343,7 +346,3 @@ else:
              x_sent_align=all_sent_align,
              ofp_fname=ofp_fname,
              batch_ids=b_ls)
-
-
-
-
