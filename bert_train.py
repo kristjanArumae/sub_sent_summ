@@ -244,8 +244,6 @@ def evaluate(model, data_loader, x_for_rouge=None, x_sent_align=None, ofp_fname=
     eval_gt_start, eval_gt_end, eval_gt_sent = [], [], []
     eval_sys_start, eval_sys_end, eval_sys_sent = [], [], []
 
-    valid_ls = []
-
     for _, batch_valid in enumerate(tqdm(data_loader, desc="Evaluation")):
         batch_valid = tuple(t2.to(device) for t2 in batch_valid)
 
@@ -261,30 +259,27 @@ def evaluate(model, data_loader, x_for_rouge=None, x_sent_align=None, ofp_fname=
         eval_sys_end.extend(end_l.cpu().data.numpy())
         eval_sys_sent.extend(sent_l.cpu().data.numpy())
 
-        valid_ls.append(valid_l.cpu().data.numpy())
+    qa_acc_val, qa_f1_val, sent_acc_val, sent_f1_val = get_valid_evaluation(eval_gt_start,
+                                                                            eval_gt_end,
+                                                                            eval_gt_sent,
+                                                                            eval_sys_start,
+                                                                            eval_sys_end,
+                                                                            eval_sys_sent)
 
-        qa_acc_val, qa_f1_val, sent_acc_val, sent_f1_val = get_valid_evaluation(eval_gt_start,
-                                                                                eval_gt_end,
-                                                                                eval_gt_sent,
-                                                                                eval_sys_start,
-                                                                                eval_sys_end,
-                                                                                eval_sys_sent)
+    cur_used_ls_mean, total_used, total_s, mean_seg_len = create_valid_rouge(x_for_rouge,
+                                                                             eval_sys_sent,
+                                                                             eval_sys_start,
+                                                                             eval_sys_end,
+                                                                             eval_gt_sent,
+                                                                             eval_gt_start,
+                                                                             eval_gt_end,
+                                                                             batch_ids,
+                                                                             x_sent_align,
+                                                                             rouge_sys_sent_path,
+                                                                             rouge_sys_segs_path,
+                                                                             ofp_fname)
 
-
-        cur_used_ls_mean, total_used, total_s, mean_seg_len = create_valid_rouge(x_for_rouge,
-                                                                                 eval_sys_sent,
-                                                                                 eval_sys_start,
-                                                                                 eval_sys_end,
-                                                                                 eval_gt_sent,
-                                                                                 eval_gt_start,
-                                                                                 eval_gt_end,
-                                                                                 batch_ids,
-                                                                                 x_sent_align,
-                                                                                 rouge_sys_sent_path,
-                                                                                 rouge_sys_segs_path,
-                                                                                 ofp_fname)
-
-        create_metric_eval(ofp_fname, cur_used_ls_mean, total_used, total_s, mean_seg_len, qa_f1_val, sent_f1_val)
+    create_metric_eval(ofp_fname, cur_used_ls_mean, total_used, total_s, mean_seg_len, qa_f1_val, sent_f1_val)
 
 
 
