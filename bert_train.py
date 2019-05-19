@@ -1,89 +1,16 @@
 import torch
-from torch import nn
 import json
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 
-from pytorch_pretrained_bert import BertModel, BertAdam
-from pytorch_pretrained_bert.modeling import BertPreTrainedModel
+from pytorch_pretrained_bert import BertAdam
 import train_args as parse
-from m_io import create_output_name, create_valid_rouge, get_valid_evaluation, create_metric_figure
+from m_io import create_output_name, create_valid_rouge, get_valid_evaluation, create_metric_figure, create_metric_eval
+from model import CustomNetwork
 
 from tqdm import tqdm, trange
 
 import numpy as np
 import os
-
-
-class CustomNetwork(BertPreTrainedModel):
-    def __init__(self, config, num_labels=2, use_positional=True, dropout=0.1):
-        super(CustomNetwork, self).__init__(config)
-
-        self.num_labels = num_labels
-
-        if use_positional:
-            config.type_vocab_size = config.max_position_embeddings
-
-        self.bert = BertModel(config)
-        self.apply(self.init_bert_weights)
-
-        self.dropout_qa = nn.Dropout(dropout)
-        self.dropout_s = nn.Dropout(dropout)
-        self.classifier = nn.Linear(config.hidden_size, num_labels)
-        self.qa_outputs = nn.Linear(config.hidden_size, 2)
-
-    def forward(self, input_ids, token_type_ids=None, attention_mask=None, labels=None, start_positions=None,end_positions=None, weights=None, train=False):
-        sequence_output, pooled_output = self.bert(input_ids, token_type_ids, attention_mask, output_all_encoded_layers=False)
-
-        pooled_output = self.dropout_s(pooled_output)
-        sequence_output = self.dropout_qa(sequence_output)
-
-        logits = self.classifier(pooled_output)
-
-        logits_qa = self.qa_outputs(sequence_output)
-        start_logits, end_logits = logits_qa.split(1, dim=-1)
-
-        start_logits = start_logits.squeeze(-1)
-        end_logits = end_logits.squeeze(-1)
-
-        if train:
-
-            if len(start_positions.size()) > 1:
-                start_positions = start_positions.squeeze(-1)
-            if len(end_positions.size()) > 1:
-                end_positions = end_positions.squeeze(-1)
-
-            ignored_index = start_logits.size(1)
-
-            start_positions.clamp_(0, ignored_index)
-            end_positions.clamp_(0, ignored_index)
-
-            loss_fct = nn.CrossEntropyLoss(ignore_index=ignored_index)
-
-            loss_sent = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-
-            start_loss = loss_fct(start_logits, start_positions)
-            end_loss = loss_fct(end_logits, end_positions)
-
-            loss_qa = (start_loss + end_loss) / 10.0
-
-            total_loss = loss_qa + loss_sent
-
-            return total_loss, loss_sent, loss_qa
-        else:
-            ignored_index = start_logits.size(1)
-
-            loss_fct = nn.CrossEntropyLoss(ignore_index=ignored_index)
-
-            loss_sent = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-
-            start_loss = loss_fct(start_logits, start_positions)
-            end_loss = loss_fct(end_logits, end_positions)
-
-            loss_qa = (start_loss + end_loss) / 10.0
-
-            total_loss = loss_qa + loss_sent
-
-            return torch.nn.functional.softmax(start_logits, dim=-1), torch.nn.functional.softmax(end_logits, dim=-1), torch.nn.functional.softmax(logits, dim=-1), total_loss
 
 
 def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, balance=None, bert_model='bert-large-uncased', use_posit=True):
@@ -302,14 +229,72 @@ def train(model, loader_train, loader_valid, num_train_epochs=70, x_for_rouge=No
     create_metric_figure(ofp_fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, qa_f1, sent_f1, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1)
 
 
+def evaluate(model, data_loader, x_for_rouge=None, x_sent_align=None, ofp_fname='PLT', batch_ids=None):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    rouge_sys_sent_path = 'data.nosync/rouge_sent_test/' + ofp_fname + '/'
+    rouge_sys_segs_path = 'data.nosync/rouge_segs_test/' + ofp_fname + '/'
+
+    if not os.path.exists(rouge_sys_sent_path):
+        os.mkdir(rouge_sys_sent_path)
+    if not os.path.exists(rouge_sys_segs_path):
+        os.mkdir(rouge_sys_segs_path)
+
+    eval_gt_start, eval_gt_end, eval_gt_sent = [], [], []
+    eval_sys_start, eval_sys_end, eval_sys_sent = [], [], []
+
+    valid_ls = []
+
+    for _, batch_valid in enumerate(tqdm(data_loader, desc="Evaluation")):
+        batch_valid = tuple(t2.to(device) for t2 in batch_valid)
+
+        input_ids, input_mask, start_positions, end_position, sent_labels, seg_ids = batch_valid
+        start_l, end_l, sent_l, valid_l = model(input_ids, seg_ids, input_mask, sent_labels, start_positions,
+                                                end_position, None)
+
+        eval_gt_start.extend(start_positions.cpu().data.numpy())
+        eval_gt_end.extend(end_position.cpu().data.numpy())
+        eval_gt_sent.extend(sent_labels.cpu().data.numpy())
+
+        eval_sys_start.extend(start_l.cpu().data.numpy())
+        eval_sys_end.extend(end_l.cpu().data.numpy())
+        eval_sys_sent.extend(sent_l.cpu().data.numpy())
+
+        valid_ls.append(valid_l.cpu().data.numpy())
+
+        qa_acc_val, qa_f1_val, sent_acc_val, sent_f1_val = get_valid_evaluation(eval_gt_start,
+                                                                                eval_gt_end,
+                                                                                eval_gt_sent,
+                                                                                eval_sys_start,
+                                                                                eval_sys_end,
+                                                                                eval_sys_sent)
+
+
+        cur_used_ls_mean, total_used, total_s, mean_seg_len = create_valid_rouge(x_for_rouge,
+                                                                                 eval_sys_sent,
+                                                                                 eval_sys_start,
+                                                                                 eval_sys_end,
+                                                                                 eval_gt_sent,
+                                                                                 eval_gt_start,
+                                                                                 eval_gt_end,
+                                                                                 batch_ids,
+                                                                                 x_sent_align,
+                                                                                 rouge_sys_sent_path,
+                                                                                 rouge_sys_segs_path,
+                                                                                 ofp_fname)
+
+        create_metric_eval(ofp_fname, cur_used_ls_mean, total_used, total_s, mean_seg_len, qa_f1_val, sent_f1_val)
+
+
+
 args = parse.get_args()
 
 batch_size = args.batch_size
 sent_len = args.sent_len
+ofp_fname = create_output_name(args)
 
 if args.train:
-
-    ofp_fname = create_output_name(args)
 
     data_loader_valid, num_val, b_ls, x_for_rouge, all_sent_align = create_iterator(data_split='valid',
                                                                                          max_len=sent_len,
@@ -342,7 +327,28 @@ if args.train:
           ofp_fname=ofp_fname,
           batch_ids=b_ls)
 else:
-    raise NotImplementedError
+    output_model_file = 'saved_models/' + ofp_fname
+
+    model = CustomNetwork.from_pretrained(args.bert_model, use_positional=args.use_positional, dropout=args.dropout)
+
+    data_loader, num_val, b_ls, x_for_rouge, all_sent_align = create_iterator(data_split='test',
+                                                                                    max_len=sent_len,
+                                                                                    max_size=-1,
+                                                                                    batch_size=batch_size,
+                                                                                    balance=None,
+                                                                                    bert_model=args.bert_model,
+                                                                                    use_posit=args.use_positional)
+
+    model.load_state_dict(torch.load(output_model_file))
+    model.eval()
+
+    evaluate(model=model,
+             data_loader=data_loader,
+             x_for_rouge=x_for_rouge,
+             x_sent_align=all_sent_align,
+             ofp_fname=ofp_fname,
+             batch_ids=b_ls)
+
 
 
 

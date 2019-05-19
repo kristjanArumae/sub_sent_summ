@@ -37,6 +37,22 @@ def create_metric_figure(fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, q
     ofp_metrics.close()
 
 
+def create_metric_eval(fname, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1):
+    ofp_metrics = open(fname + '_EVAL_metrics.out', 'w+')
+
+    ofp_metrics.write('Sent used: ' + str(total_used) + '/' + str(total_s) + ' = ' + str(total_used / float(total_s)))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Avg len (sent) ' + str(cur_used_ls_mean))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Avg seg len ' + str(mean_seg_len))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Best sent f1 ' + str(best_sent_f1))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Best qa f1 ' + str(best_qa_f1))
+    ofp_metrics.write('\n')
+
+    ofp_metrics.close()
+
 def get_valid_evaluation(eval_gt_start,
                          eval_gt_end,
                          eval_gt_sent,
