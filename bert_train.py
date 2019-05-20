@@ -27,8 +27,9 @@ def create_iterator(data_split='train', max_len=45, max_size=-1, batch_size=32, 
     ifp.close()
 
     x_ls, y_ls, s_idx_ls, b_id_ls, rouge_dict, x_for_rouge, x_align = data['x'], data['y'], data['s_id'], data['b_id'], \
-                                                                      data[
-                                                                          'rouge'], data['x_orig'], data['x_align']
+                                                                      data['rouge'], data['x_orig'], data['x_align']
+
+    assert len(set(len(x) for x in (x_ls, y_ls, s_idx_ls, b_id_ls, x_align))) == 1
 
     all_input_ids = []
     all_input_mask = []
@@ -327,8 +328,6 @@ if args.train:
 else:
     output_model_file = 'saved_models/' + ofp_fname
 
-    model = torch.load(output_model_file)
-
     data_loader, num_val, b_ls, x_for_rouge, all_sent_align = create_iterator(data_split='test',
                                                                               max_len=sent_len,
                                                                               max_size=-1,
@@ -337,6 +336,7 @@ else:
                                                                               bert_model=args.bert_model,
                                                                               use_posit=args.use_positional)
 
+    model = CustomNetwork.from_pretrained(args.bert_model, use_positional=args.use_positional, dropout=args.dropout)
     model.load_state_dict(torch.load(output_model_file))
     model.eval()
 
