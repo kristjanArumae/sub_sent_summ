@@ -145,8 +145,15 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
                 ofp_readable.write('</p>')
 
             ofp_readable.write('<p>')
-            if rouge_counter == 7776 or rouge_counter == 8518:
+            if rouge_counter == 7776 or rouge_counter == 8518 and 'test' in rouge_sys_segs_path:
+                ofp_rouge_sent = open(rouge_sys_sent_path + 's_' + str(rouge_counter).zfill(6) + '.txt', 'w+')
+                ofp_rouge_segm = open(rouge_sys_segs_path + 's_' + str(rouge_counter).zfill(6) + '.txt', 'w+')
+
+                ofp_rouge_sent.close()
+                ofp_rouge_segm.close()
+
                 rouge_counter += 1
+
             ofp_rouge_sent = open(rouge_sys_sent_path + 's_' + str(rouge_counter).zfill(6) + '.txt', 'w+')
             ofp_rouge_segm = open(rouge_sys_segs_path + 's_' + str(rouge_counter).zfill(6) + '.txt', 'w+')
 
