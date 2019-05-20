@@ -183,8 +183,8 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
                 ofp_rouge_sent.write(' ')
                 ofp_rouge_segm.write(' ')
 
-                span_len = len(x_o.split())
-                sentence_length = end_idx_aligned - start_idx_aligned
+                span_len = end_idx_aligned - start_idx_aligned
+                sentence_length = len(x_o.split())
 
                 compression_ratio.append(span_len / float(sentence_length))
 
@@ -247,8 +247,10 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
             ofp_rouge_sent.write(' ')
             ofp_rouge_segm.write(' ')
 
-            span_len = len(x_o.split())
-            sentence_length = end_idx_aligned - start_idx_aligned
+            span_len = end_idx_aligned - start_idx_aligned
+            sentence_length = len(x_o.split())
+
+            compression_ratio.append(span_len / float(sentence_length))
 
             for i, token in enumerate(x_o.split()):
                 if model_lbl_s > 0:
