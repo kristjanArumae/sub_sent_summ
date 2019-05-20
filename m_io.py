@@ -37,7 +37,7 @@ def create_metric_figure(fname, loss_ls, loss_ls_s, loss_ls_qa, loss_valid_ls, q
     ofp_metrics.close()
 
 
-def create_metric_eval(fname, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1):
+def create_metric_eval(fname, cur_used_ls_mean, total_used, total_s, mean_seg_len, best_qa_f1, best_sent_f1, comp_ratio):
     ofp_metrics = open(fname + '_EVAL_metrics.out', 'w+')
 
     ofp_metrics.write('Sent used: ' + str(total_used) + '/' + str(total_s) + ' = ' + str(total_used / float(total_s)))
@@ -49,6 +49,8 @@ def create_metric_eval(fname, cur_used_ls_mean, total_used, total_s, mean_seg_le
     ofp_metrics.write('Best sent f1 ' + str(best_sent_f1))
     ofp_metrics.write('\n')
     ofp_metrics.write('Best qa f1 ' + str(best_qa_f1))
+    ofp_metrics.write('\n')
+    ofp_metrics.write('Comp Ratio ' + str(comp_ratio))
     ofp_metrics.write('\n')
 
     ofp_metrics.close()
@@ -111,6 +113,7 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
 
     ofp_readable = open('data.nosync/' + ofp_fname + '.html', 'w+')
     rouge_counter = 0
+    compression_ratio = []
 
     for x_o, sys_lbl_s, sys_lbl_start, sys_lbl_end, model_lbl_s, model_lbl_start, model_lbl_end, b_id, x_a in zip(
             x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end, gt_sent, gt_start, gt_end, batch_ids, align_ls):
@@ -149,7 +152,6 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
 
                 ofp_readable.write('</p>')
 
-            did_write = False
             ofp_readable.write('<p>')
 
             if rouge_counter == 7776 or rouge_counter == 8518 and 'test' in rouge_sys_segs_path:
@@ -173,7 +175,6 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
             rouge_counter += 1
 
             if sys_lbl_s[1] > sys_lbl_s[0]:
-                did_write = True
                 segment = x_o.split()[start_idx_aligned:end_idx_aligned + 1]
 
                 ofp_rouge_sent.write(x_o.replace('[CLS]', '').replace('[SEP]', ''))
@@ -181,6 +182,11 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
 
                 ofp_rouge_sent.write(' ')
                 ofp_rouge_segm.write(' ')
+
+                span_len = len(x_o.split())
+                sentence_length = end_idx_aligned - start_idx_aligned
+
+                compression_ratio.append(span_len / float(sentence_length))
 
                 for i, token in enumerate(x_o.split()):
                     if model_lbl_s > 0:
@@ -232,7 +238,6 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
                     ofp_readable.write(x_o + '</br>')
 
         elif sys_lbl_s[1] > sys_lbl_s[0]:
-            did_write = True
 
             segment = x_o.split()[start_idx_aligned:end_idx_aligned + 1]
 
@@ -241,6 +246,9 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
 
             ofp_rouge_sent.write(' ')
             ofp_rouge_segm.write(' ')
+
+            span_len = len(x_o.split())
+            sentence_length = end_idx_aligned - start_idx_aligned
 
             for i, token in enumerate(x_o.split()):
                 if model_lbl_s > 0:
@@ -300,7 +308,7 @@ def create_valid_rouge(x_for_rouge, eval_sys_sent, eval_sys_start, eval_sys_end,
     ofp_rouge_segm.close()
     ofp_readable.close()
 
-    return np.mean(cur_used_ls), total_used, total_s, np.mean(uesd_seg_len)
+    return np.mean(cur_used_ls), total_used, total_s, np.mean(uesd_seg_len), np.mean(compression_ratio)
 
 
 def create_output_name(args):
